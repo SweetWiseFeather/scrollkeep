@@ -1,6 +1,6 @@
 // Isolated Chrome profile: never connects to the user's browser or account.
 import { spawn } from 'node:child_process';
-import { mkdtemp, readFile } from 'node:fs/promises';
+import { mkdtemp, readFile, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createServer } from 'node:http';
@@ -16,8 +16,8 @@ const server = createServer((req, res) => {
   }
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   if (req.url === '/other') return res.end('<body style="background:#cc00cc">Other tab</body>');
-  res.end(`<body style="margin:0;background:rgb(240,250,230)"><h1>Long page</h1><img src="/cached.svg">
-    ${Array.from({ length: 12 }, (_, i) => `<section style="height:500px"><h2>Section ${i}</h2><img loading="lazy" alt="image-${i}" width="100" height="100" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='blue'/%3E%3C/svg%3E"></section>`).join('')}
+  res.end(`<body style="margin:0;background:rgb(240,250,230);font-family:system-ui,sans-serif"><h1 style="margin:24px">ScrollKeep 演示 · 长网页阅读笔记</h1><img src="/cached.svg">
+    ${Array.from({ length: 12 }, (_, i) => `<section style="height:500px;padding-left:32px"><h2>第 ${i + 1} 节 · 将阅读材料保存在本地</h2><p style="max-width:580px;line-height:1.8">这是一篇自制的演示长网页，用于展示 ScrollKeep 的滚动归档功能。页面包含多个章节与图片，导出后可以连续阅读，并在同一文件夹查看图片和来源清单。</p><img loading="lazy" alt="image-${i}" width="100" height="100" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='blue'/%3E%3C/svg%3E"></section>`).join('')}
     <script>window.addEventListener('load', () => { const blob = new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>'], {type:'image/svg+xml'}); const img = new Image(); img.src = URL.createObjectURL(blob); document.body.append(img); });</script>`);
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -72,6 +72,9 @@ try {
     return response.result.value;
   };
   await page('Page.enable');
+  if (process.argv.includes('--store-screenshot')) {
+    await page('Emulation.setDeviceMetricsOverride', { width: 1280, height: 800, deviceScaleFactor: 1, mobile: false });
+  }
   await page('Emulation.setFocusEmulationEnabled', { enabled: true });
   await evaluate(`new Promise(r => document.readyState === 'complete' ? r() : addEventListener('load', r, {once:true}))`);
   await evaluate(`globalThis.chrome = {runtime:{onMessage:{addListener(fn){globalThis.captureListener=fn}},sendMessage:async()=>({ok:true})}};
@@ -95,6 +98,13 @@ try {
     const screenshot = await page('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false });
     screenshots.push({ ...capture, dataUrl: `data:image/png;base64,${screenshot.data}` });
     await evaluate(`sendCapture({type:'AFTER_CAPTURE',count:${index + 1},top:${capture.top}})`);
+    if (index === 2 && process.argv.includes('--store-screenshot')) {
+      const preview = await page('Page.captureScreenshot', { format: 'png', fromSurface: true, captureBeyondViewport: false });
+      const directory = new URL('../store-assets/', import.meta.url);
+      await mkdir(directory, { recursive: true });
+      await writeFile(new URL('screenshot-1280x800.png', directory), Buffer.from(preview.data, 'base64'));
+      console.log('Generated store-assets/screenshot-1280x800.png from the real controls on a self-authored demo webpage.');
+    }
     const next = await evaluate(`sendCapture({type:'SCROLL_NEXT'})`);
     if (!next.moved) break;
   }

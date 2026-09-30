@@ -12,6 +12,7 @@ This package is prepared for submission, not already approved or listed. Google 
 - Support: https://github.com/SweetWiseFeather/scrollkeep/issues
 - Privacy policy: https://github.com/SweetWiseFeather/scrollkeep/blob/main/PRIVACY.md
 - Store icon: icons/icon-128.png
+- Product screenshot: store-assets/screenshot-1280x800.png (real export controls on a self-authored demo page)
 
 ## 简短说明
 
@@ -79,7 +80,7 @@ No remotely hosted executable code is used. All extension code is included in th
 
 Sign in to your Chrome Web Store developer account. If it is not registered, complete Google's developer registration and any applicable payment/agreements yourself. Upload the ZIP, add at least one compliant product screenshot, fill out store/privacy/distribution fields, and submit for review.
 
-Screenshots must show this extension using a public or self-authored demo page, not private or third-party course material. Current image size requirements are linked below. Check the dashboard for all mandatory fields before submitting.
+The supplied screenshot shows the real extension controls on a self-authored demo page. Regenerate it on macOS using `node tests/browser-smoke.mjs --store-screenshot`. It does not use private or third-party course material. Current image size requirements are linked below. Check the dashboard for all mandatory fields before submitting.
 
 Official references:
 - https://developer.chrome.com/docs/webstore/prepare

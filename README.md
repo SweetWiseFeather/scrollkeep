@@ -6,6 +6,8 @@ Archive long webpages as a continuous single-page PDF, with their images in the 
 
 [下载发布包](https://github.com/SweetWiseFeather/scrollkeep/releases) · [隐私政策](PRIVACY.md) · [商店发布说明](STORE.md) · [MIT 许可证](LICENSE)
 
+![ScrollKeep 在自制演示网页中的导出控制条](store-assets/screenshot-1280x800.png)
+
 ## 浏览器兼容性
 
 | 浏览器桌面版 | 状态 |
