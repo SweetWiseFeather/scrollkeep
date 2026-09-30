@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <link rel="stylesheet" href="popup.css">
+  <title>ScrollKeep · 长页存档</title>
+</head>
+<body>
+  <main>
+    <h1>ScrollKeep · 长页存档</h1>
+    <p id="hint">打开目标网页，导出单页 PDF 和图片。</p>
+    <label>
+      截图间隔
+      <select id="delay">
+        <option value="450">快速（普通文档）</option>
+        <option value="800" selected>稳妥（推荐）</option>
+        <option value="1400">慢速（图片较多）</option>
+      </select>
+    </label>
+    <label class="check">
+      <input id="resetTop" type="checkbox" checked>
+      从文档顶部开始
+    </label>
+    <button id="start">开始自动导出</button>
+    <div id="controls" hidden><button id="finish">到此结束并生成</button><button id="cancel">取消导出</button></div>
+    <p class="note">可切换标签页或使用其他应用。请保持目标页打开；文件自动保存到下载目录的同一个文件夹。</p>
+  </main>
+  <script src="popup.js"></script>
+</body>
+</html>

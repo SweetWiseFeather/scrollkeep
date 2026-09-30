@@ -1,0 +1,9 @@
+.DS_Store
+backup-*/
+dist/
+node_modules/
+*.pem
+*.crx
+*.log
+.env
+.env.*

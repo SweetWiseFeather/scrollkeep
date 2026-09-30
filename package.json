@@ -1,0 +1,15 @@
+{
+  "name": "scrollkeep",
+  "version": "0.3.1",
+  "private": true,
+  "description": "Archive long webpages as a continuous single-page PDF with their images.",
+  "license": "MIT",
+  "repository": "https://github.com/SweetWiseFeather/scrollkeep",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "test": "node --test tests/export.test.mjs",
+    "test:browser": "node tests/browser-smoke.mjs",
+    "icons": "node scripts/build-icons.mjs",
+    "build": "node scripts/build-icons.mjs && node scripts/package.mjs"
+  }
+}
