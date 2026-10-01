@@ -1,0 +1,5 @@
+{
+  "extensionName": { "message": "ScrollKeep · 长页存档" },
+  "extensionDescription": { "message": "后台滚动长网页，保存连续单页 PDF 和网页图片到同一文件夹。" },
+  "actionTitle": { "message": "ScrollKeep · 导出长网页" }
+}

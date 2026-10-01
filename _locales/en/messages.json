@@ -1,0 +1,5 @@
+{
+  "extensionName": { "message": "ScrollKeep — Long Page to PDF" },
+  "extensionDescription": { "message": "Save long webpages as one continuous PDF with images in one folder. Keep working in other tabs during export." },
+  "actionTitle": { "message": "ScrollKeep — Export a long webpage" }
+}

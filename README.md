@@ -78,7 +78,7 @@ npm test
 npm run build
 ```
 
-构建产物为 `dist/scrollkeep-0.3.1.zip`，manifest.json 位于 ZIP 根目录。构建只包含明确列出的运行文件、图标和许可说明，排除备份、测试、缓存和个人文件。图标由 `scripts/build-icons.mjs` 生成。
+构建产物为 `dist/scrollkeep-0.3.3.zip`，manifest.json 位于 ZIP 根目录。当前发布版免费，不启用试用限制或收款；默认英文，中文浏览器显示中文。构建只包含明确列出的运行文件、语言资源、图标和许可说明，排除备份、测试、缓存和个人文件。图标由 `scripts/build-icons.mjs` 生成。
 
 `node --test tests/export.test.mjs`：验证后台导出流程、图片去重、失败清单、取消、调试断开、下载超时、拼接坐标以及超长单页 PDF 结构。
 

@@ -7,6 +7,7 @@ import { createServer } from 'node:http';
 import assert from 'node:assert/strict';
 
 const content = await readFile(new URL('../content.js', import.meta.url), 'utf8');
+const i18n = await readFile(new URL('../i18n.js', import.meta.url), 'utf8');
 const offscreen = await readFile(new URL('../offscreen.js', import.meta.url), 'utf8');
 const profile = await mkdtemp(join(tmpdir(), 'pdf-exporter-smoke-'));
 const server = createServer((req, res) => {
@@ -16,8 +17,8 @@ const server = createServer((req, res) => {
   }
   res.setHeader('Content-Type', 'text/html; charset=utf-8');
   if (req.url === '/other') return res.end('<body style="background:#cc00cc">Other tab</body>');
-  res.end(`<body style="margin:0;background:rgb(240,250,230);font-family:system-ui,sans-serif"><h1 style="margin:24px">ScrollKeep 演示 · 长网页阅读笔记</h1><img src="/cached.svg">
-    ${Array.from({ length: 12 }, (_, i) => `<section style="height:500px;padding-left:32px"><h2>第 ${i + 1} 节 · 将阅读材料保存在本地</h2><p style="max-width:580px;line-height:1.8">这是一篇自制的演示长网页，用于展示 ScrollKeep 的滚动归档功能。页面包含多个章节与图片，导出后可以连续阅读，并在同一文件夹查看图片和来源清单。</p><img loading="lazy" alt="image-${i}" width="100" height="100" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='blue'/%3E%3C/svg%3E"></section>`).join('')}
+  res.end(`<body style="margin:0;background:rgb(240,250,230);font-family:system-ui,sans-serif"><h1 style="margin:24px">ScrollKeep Demo · A Long Reading Guide</h1><img src="/cached.svg">
+    ${Array.from({ length: 12 }, (_, i) => `<section style="height:500px;padding-left:32px"><h2>Section ${i + 1} · Keep your reading materials offline</h2><p style="max-width:580px;line-height:1.8">This self-authored demo shows ScrollKeep capturing a long webpage. Save the sections as one continuous PDF, with loaded images and a source manifest in the same folder.</p><img loading="lazy" alt="image-${i}" width="100" height="100" src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='100' height='100'%3E%3Crect width='100' height='100' fill='blue'/%3E%3C/svg%3E"></section>`).join('')}
     <script>window.addEventListener('load', () => { const blob = new Blob(['<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><rect width="10" height="10" fill="red"/></svg>'], {type:'image/svg+xml'}); const img = new Image(); img.src = URL.createObjectURL(blob); document.body.append(img); });</script>`);
 });
 await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
@@ -77,10 +78,12 @@ try {
   }
   await page('Emulation.setFocusEmulationEnabled', { enabled: true });
   await evaluate(`new Promise(r => document.readyState === 'complete' ? r() : addEventListener('load', r, {once:true}))`);
-  await evaluate(`globalThis.chrome = {runtime:{onMessage:{addListener(fn){globalThis.captureListener=fn}},sendMessage:async()=>({ok:true})}};
+  await evaluate(`globalThis.chrome = {i18n:{getUILanguage:()=> 'en'},runtime:{onMessage:{addListener(fn){globalThis.captureListener=fn}},sendMessage:async()=>({ok:true})}};
     globalThis.sendCapture = (message) => new Promise(resolve => captureListener(message, {}, resolve));`);
+  await evaluate(i18n);
   await evaluate(content);
   await evaluate(`sendCapture({type:'INIT_CAPTURE',resetTop:true})`);
+  assert.match(await evaluate(`document.querySelector('#__scrollkeep_exporter_ui').shadowRoot.querySelector('.finish').textContent`), /Finish and save/);
   const tree = await page('Page.getResourceTree');
   const resource = tree.frameTree.resources.find((r) => r.url.endsWith('/cached.svg'));
   assert.equal(resource.mimeType, 'image/svg+xml');
@@ -139,6 +142,44 @@ try {
   assert.equal(structure.onePage, true);
   assert.equal(structure.imageCount, screenshots.length);
   await evaluate(`sendFile({type:'PDF_RELEASE',url:${JSON.stringify(pdf.url)}})`);
+  if (!process.argv.includes('--billing')) {
+    const popup = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
+    const markup = popup.match(/<body>([\s\S]*)<script src="i18n.js">/)[1];
+    await evaluate(`document.body.innerHTML=${JSON.stringify(markup)};
+      chrome.runtime.sendMessage=async()=>({ok:true,running:false});
+      chrome.storage={local:{get:async()=>({})}};`);
+    await evaluate(await readFile(new URL('../popup.js', import.meta.url), 'utf8'));
+    assert.equal(await evaluate(`document.querySelector('#start').textContent`), 'Start export');
+    assert.equal(await evaluate(`document.querySelector('#start').disabled`), false);
+    assert.equal(await evaluate(`document.documentElement.lang`), 'en');
+    console.log('PASS: English free popup has enabled export with no trial, license, or checkout.');
+  }
+  if (process.argv.includes('--billing')) {
+    const section = await readFile(new URL('../store-edition/popup-section.html', import.meta.url), 'utf8');
+    const config = JSON.parse(await readFile(new URL('../.local-billing/test-config.json', import.meta.url), 'utf8'));
+    const token = (await readFile(new URL('../dist/scrollkeep-TEST-activation.txt', import.meta.url), 'utf8')).trim();
+    const popup = await readFile(new URL('../popup.html', import.meta.url), 'utf8');
+    const markup = popup.match(/<body>([\s\S]*)<script src="popup.js">/)[1].replace('<p id="hint">', section + '<p id="hint">');
+    await evaluate(`document.body.innerHTML=${JSON.stringify(markup)};
+      globalThis.SCROLLKEEP_BILLING_CONFIG=${JSON.stringify(config)};
+      globalThis.billingListeners=[];globalThis.billingStorage={};
+      globalThis.chrome={runtime:{onMessage:{addListener(fn){billingListeners.push(fn)}},sendMessage(message){
+        if(message.type==='GET_EXPORT_STATUS')return Promise.resolve({ok:true,running:false});
+        return new Promise(resolve=>{for(const fn of billingListeners)fn(message,{},resolve)})
+      }},storage:{local:{get:async()=>({...billingStorage}),set:async(v)=>{billingStorage={...billingStorage,...v}}}},tabs:{create:async()=>{throw Error('Test build must not open checkout')}}};`);
+    await evaluate(await readFile(new URL('../store-edition/billing.js', import.meta.url), 'utf8'));
+    await evaluate(await readFile(new URL('../popup.js', import.meta.url), 'utf8'));
+    await evaluate(await readFile(new URL('../store-edition/popup-billing.js', import.meta.url), 'utf8'));
+    await evaluate(`new Promise(r=>setTimeout(r,100))`);
+    assert.equal(await evaluate(`document.querySelector('#start').disabled`), true);
+    assert.equal(await evaluate(`document.querySelector('#buy-license').disabled`), true);
+    await evaluate(`document.querySelector('#trial-start').click();new Promise(r=>setTimeout(r,100))`);
+    assert.equal(await evaluate(`document.querySelector('#start').disabled`), false);
+    assert.match(await evaluate(`document.querySelector('#billing-status').textContent`), /剩余 14 天/);
+    await evaluate(`document.querySelector('#license-token').value=${JSON.stringify(token)};document.querySelector('#activate-license').click();new Promise(r=>setTimeout(r,200))`);
+    assert.match(await evaluate(`document.querySelector('#billing-status').textContent`), /年度授权有效/);
+    console.log('PASS: real Chrome billing popup, explicit trial, disabled unconfigured checkout, signed annual activation.');
+  }
   console.log('PASS: inactive-tab screenshots, lazy images, blob originals, scrolling restoration, real JPEG stitching and one-page PDF.');
 } finally {
   for (const socket of sockets) socket.close();

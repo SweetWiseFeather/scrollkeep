@@ -106,6 +106,7 @@
         <div class="track"><div class="bar"></div></div>
         <div class="actions"><button class="finish">到此结束并生成</button><button class="cancel">取消</button></div>
       </div>`;
+    globalThis.ScrollKeepI18n?.translateDom(shadow);
     shadow.querySelector(".finish").onclick = () => chrome.runtime.sendMessage({ type: "FINISH_EARLY" });
     shadow.querySelector(".cancel").onclick = () => chrome.runtime.sendMessage({ type: "CANCEL_EXPORT" });
     document.documentElement.appendChild(host);
@@ -116,7 +117,7 @@
     if (!state.ui) return;
     const shadow = state.ui.shadowRoot;
     shadow.querySelector(".bar").style.width = `${Math.max(0, Math.min(100, progress))}%`;
-    shadow.querySelector(".status").textContent = message;
+    shadow.querySelector(".status").textContent = globalThis.ScrollKeepI18n?.text(message) ?? message;
   }
 
   async function prepareCapture() {

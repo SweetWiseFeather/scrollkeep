@@ -1,4 +1,7 @@
+if (typeof importScripts === 'function') importScripts('i18n.js');
+const localize = (text) => globalThis.ScrollKeepI18n?.text(text) ?? text;
 let job = null;
+let authorizing = false;
 const wait = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 const sendTab = (tabId, message) => chrome.tabs.sendMessage(tabId, message);
 const command = (method, params = {}) => chrome.debugger.sendCommand({ tabId: job.tabId }, method, params);
@@ -13,6 +16,7 @@ chrome.debugger.onDetach.addListener((source) => {
 });
 
 async function status(text, progress = 0) {
+  text = localize(text);
   job.status = text;
   await sendTab(job.tabId, { type: "SET_STATUS", text, progress }).catch(() => {});
 }
@@ -103,7 +107,7 @@ async function saveImages(images) {
     } catch (error) {
       checkJob();
       entry.status = "failed";
-      entry.error = error.message;
+      entry.error = localize(error.message);
     }
   }
 }
@@ -123,14 +127,26 @@ async function scrollNextWhenReady(delay) {
 
 chrome.runtime.onMessage.addListener((message, sender, respond) => {
   if (message.type === "START_EXPORT") {
-    if (sender.tab || !Number.isInteger(message.tabId)) { respond({ ok: false, error: "无效的导出请求" }); return; }
-    if (job) { respond({ ok: false, error: "已有导出任务正在进行" }); return; }
-    startExport(message).catch((error) => console.error("导出失败", error));
-    respond({ ok: true });
+    if (sender.tab || !Number.isInteger(message.tabId)) { respond({ ok: false, error: localize("无效的导出请求") }); return; }
+    if (job || authorizing) { respond({ ok: false, error: localize("已有导出任务正在进行") }); return; }
+    const launch = () => {
+      startExport(message).catch((error) => console.error("导出失败", error));
+      respond({ ok: true });
+    };
+    if (globalThis.ScrollKeepBilling) {
+      authorizing = true;
+      ScrollKeepBilling.getStatus().then((access) => {
+        if (!access.allowed) respond({ ok: false, error: access.text });
+        else launch();
+      }, (error) => respond({ ok: false, error: `授权检查失败：${error.message}` }))
+        .finally(() => { authorizing = false; });
+      return true;
+    }
+    launch();
     return;
   }
   if (message.type === "GET_EXPORT_STATUS") {
-    respond({ ok: true, running: !!job, tabId: job?.tabId, text: job?.status });
+    respond({ ok: true, running: !!job, tabId: job?.tabId, text: localize(job?.status) });
     return;
   }
   if (job && (!sender.tab || sender.tab.id === job.tabId)) {
@@ -164,7 +180,7 @@ async function startExport(options) {
     attached = true;
     await command("Page.enable");
     await command("Emulation.setFocusEmulationEnabled", { enabled: true });
-    await chrome.scripting.executeScript({ target: { tabId: job.tabId }, files: ["content.js"] });
+    await chrome.scripting.executeScript({ target: { tabId: job.tabId }, files: ["i18n.js", "content.js"] });
     initialized = true;
     const info = await sendTab(job.tabId, { type: "INIT_CAPTURE", resetTop: options.resetTop });
     if (!info?.ok) throw new Error(info?.error || "页面初始化失败");
@@ -205,7 +221,7 @@ async function startExport(options) {
     await status(finalText, 100);
     if (!job.cancelled) throw error;
   } finally {
-    await chrome.storage.local.set({ lastExport: { text: finalText, folder: job.folder, time: Date.now() } }).catch(() => {});
+    await chrome.storage.local.set({ lastExport: { text: localize(finalText), folder: job.folder, time: Date.now() } }).catch(() => {});
     if (pdfUrl) await offscreen({ type: "PDF_RELEASE", url: pdfUrl }).catch(() => {});
     await chrome.runtime.sendMessage({ type: "PDF_RESET", title: "" }).catch(() => {});
     if (initialized) await sendTab(job.tabId, { type: "CLEANUP_CAPTURE", restore: true }).catch(() => {});

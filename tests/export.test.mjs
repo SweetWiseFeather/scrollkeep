@@ -6,8 +6,9 @@ import { readFile } from 'node:fs/promises';
 const root = new URL('../', import.meta.url);
 const background = await readFile(new URL('background.js', root), 'utf8');
 const offscreenSource = await readFile(new URL('offscreen.js', root), 'utf8');
+const i18nSource = await readFile(new URL('i18n.js', root), 'utf8');
 
-async function runExport(mode = 'normal') {
+async function runExport(mode = 'normal', language = 'zh-CN') {
   const listeners = [];
   let detachListener;
   let clock = 0;
@@ -28,6 +29,7 @@ async function runExport(mode = 'normal') {
     return response;
   };
   const chrome = {
+    i18n: { getUILanguage: () => language },
     debugger: {
       onDetach: { addListener(fn) { detachListener = fn; } },
       async attach() { if (mode === 'attach-failure') throw new Error('already attached'); },
@@ -87,6 +89,7 @@ async function runExport(mode = 'normal') {
     action: { async setBadgeText() {} }
   };
   const context = vm.createContext({ chrome, Date: FastDate, console: { error() {} }, setTimeout: (fn) => setTimeout(fn, 0) });
+  vm.runInContext(i18nSource, context);
   vm.runInContext(background, context);
   assert.equal(send({ type: 'START_EXPORT', tabId: 7 }).ok, true);
   assert.equal(send({ type: 'START_EXPORT', tabId: 7 }).ok, false);
@@ -116,6 +119,13 @@ test('download waits for completion before releasing file URLs', async () => {
   const result = await runExport('pending');
   assert.match(result.lastExport.text, /已保存/);
   assert.equal(result.released.length, 4);
+});
+
+test('free English background exports without trial or license and reports localized completion', async () => {
+  const result = await runExport('normal', 'en');
+  assert.match(result.lastExport.text, /one PDF and 2 images; 1 failed/);
+  assert.ok(result.tabMessages.some((message) => /Creating a continuous single-page PDF/.test(message.text || '')));
+  assert.ok(result.cleaned && result.detached);
 });
 
 test('cancel and debugger disconnect terminate without building a PDF and restore the page', async () => {

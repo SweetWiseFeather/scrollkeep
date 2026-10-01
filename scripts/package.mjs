@@ -3,7 +3,7 @@ const root = new URL('../', import.meta.url);
 const manifest = JSON.parse(await readFile(new URL('manifest.json', root), 'utf8'));
 const metadata = JSON.parse(await readFile(new URL('package.json', root), 'utf8'));
 if (manifest.version !== metadata.version) throw new Error('Manifest and package versions differ.');
-const files = ['manifest.json', 'background.js', 'content.js', 'offscreen.html', 'offscreen.js', 'popup.html', 'popup.js', 'popup.css', 'LICENSE', 'PRIVACY.md', ...Object.values(manifest.icons)];
+const files = ['manifest.json', 'i18n.js', '_locales/en/messages.json', '_locales/zh_CN/messages.json', 'background.js', 'content.js', 'offscreen.html', 'offscreen.js', 'popup.html', 'popup.js', 'popup.css', 'LICENSE', 'PRIVACY.md', ...Object.values(manifest.icons)];
 function crc32(bytes) {
   let crc = 0xffffffff;
   for (const byte of bytes) {
